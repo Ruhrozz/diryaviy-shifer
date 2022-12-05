@@ -27,38 +27,55 @@ from turtlebot3_autorace_msgs.msg import MovingParam
 
 class CoreModeDecider():
     def __init__(self):
-        # subscribes : invoking object detected
+        # subscribes
         self.sub_traffic_light = rospy.Subscriber('/detect/traffic_light', UInt8, self.cbInvokedByTrafficLight, queue_size=1)
+        self.sub_traffic_sign = rospy.Subscriber('/detect/traffic_sign', UInt8, self.cbInvokedByTrafficSign, queue_size=1)
 
-        # publishes : decided mode
-        self.pub_decided_mode = rospy.Publisher('/core/decided_mode', UInt8, queue_size=1)
+        # publishes
+        self.pub_decided_mode = rospy.Publisher('/robot/mode', UInt8, queue_size=1)
+        self.pub_moving = rospy.Publisher('/robot/allow_moving', UInt8, queue_size=1)
+        self.pub_intersection_order = rospy.Publisher('/detect/intersection_order', UInt8, queue_size=1)
 
-        self.InvokedObject = Enum('InvokedObject', 'traffic_light')
-        self.Modes = {"traffic_light": 1, "lane_following": 2}
-
-        self.fnInitMode()
+        self.left_right_detected = False
 
     def cbInvokedByTrafficLight(self, traffic_light_type_msg):
-        rospy.loginfo("invoke light")
-        self.fnDecideMode(self.InvokedObject.traffic_light.value, traffic_light_type_msg)
+        rospy.loginfo("------------------invoke green light------------------")
 
-    def fnInitMode(self):                                               
-        self.current_mode = "traffic_light"
-        self.fnPublishMode()
-
-    def fnDecideMode(self, invoked_object, msg_data):
-        if self.current_mode == "traffic_light":
-            if invoked_object == 1:     # if Light == Green
-                self.current_mode = "lane_following"
-            else:
-                pass
-            self.fnPublishMode()
-        else:
-            pass
-
-    def fnPublishMode(self):
+        # allow control lane to start moving
         decided_mode = UInt8()
-        decided_mode.data = self.Modes[self.current_mode]
+        decided_mode.data = 1
+        self.pub_moving.publish(decided_mode)
+
+        # go to traffic mission
+        decided_mode = UInt8()
+        decided_mode.data = 2
+        self.pub_decided_mode.publish(decided_mode)
+
+
+    def cbInvokedByTrafficSign(self, traffic_sign_type_msg):       
+        # 1 - Traffic, 2 - Left, 3 - Right
+        if traffic_sign_type_msg.data == 1:
+            rospy.loginfo("------------------traffic detected------------------")
+
+            self.traffic_detected = True
+
+            msg_pub_intersection_order = UInt8()
+            msg_pub_intersection_order.data = 2
+            self.pub_intersection_order.publish(msg_pub_intersection_order)
+
+        if traffic_sign_type_msg.data == 2 or traffic_sign_type_msg.data == 3:
+            if not self.left_right_detected:
+                rospy.loginfo("------------------invoke intersection------------------")
+
+                self.left_right_detected = True
+
+                msg_pub_intersection_order = UInt8()
+                msg_pub_intersection_order.data = 1
+                self.pub_intersection_order.publish(msg_pub_intersection_order)
+
+        # go to intersection mission
+        decided_mode = UInt8()
+        decided_mode.data = 3
         self.pub_decided_mode.publish(decided_mode)
 
     def main(self):

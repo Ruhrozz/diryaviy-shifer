@@ -32,20 +32,14 @@ class CoreNodeController():
         self.ros_package_path = self.ros_package_path.replace('turtlebot3_autorace_core/nodes', '')
 
         # subscribes : status returned
-        self.sub_mode_control = rospy.Subscriber('/core/decided_mode', UInt8, self.cbReceiveMode, queue_size=1)
+        self.sub_mode_control = rospy.Subscriber('/robot/mode', UInt8, self.cbReceiveMode, queue_size=1)
   
         # publishes orders
         self.pub_traffic_light_order = rospy.Publisher('/detect/traffic_light_order', UInt8, queue_size=1)
-        self.pub_mode_return = rospy.Publisher('/core/returned_mode', UInt8, queue_size=1)
-        self.pub_exit = rospy.Publisher("/core/exit_mode", UInt8, queue_size=1)
-        self.pub_timer_start = rospy.Publisher('/detect/timer/start', Float64, queue_size= 1)
 
         self.current_mode = 0
-
-        self.StepOfTrafficLight = Enum('StepOfTrafficLight', 'searching_traffic_light in_traffic_light')    
-        self.current_step_traffic_light = self.StepOfTrafficLight.searching_traffic_light.value
+        self.left_right_detected = False
     
-        self.Launcher = Enum('Launcher', 'launch_camera_ex_calib launch_detect_lane launch_detect_traffic_light launch_driving_lane')
         self.uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
 
         self.launch_camera_in_launched = False
@@ -53,8 +47,12 @@ class CoreNodeController():
         self.launch_detect_lane_launched = False    
         self.launch_detect_traffic_light_launched = False
         self.launch_driving_lane_launched = False
+        self.launch_detect_sign_launched = False
+        self.launch_detect_intersection_launched = False
+        self.launch_control_moving_launched = False
 
         self.fnLaunch("camera_in_calib", True)
+        self.fnLaunch("camera_ex_calib", True)
 
         self.is_triggered = False
 
@@ -73,34 +71,28 @@ class CoreNodeController():
 
   
     def fnControlNode(self): 
-        # lane_following
-        if self.current_mode == 2:      # if mode == Lane Following
+        if self.current_mode == 3:        # if mode == Find Intersection Sign
+            rospy.loginfo("New trigger for intersection")
+            self.fnLaunch("control_moving", True)
+            self.fnLaunch("detect_intersection", True)
+
+        elif self.current_mode == 2:      # if mode == Find Traffic Sign
             rospy.loginfo("New trigger for lane_following")
+
             self.fnLaunch("detect_traffic_light", False)
+            self.fnLaunch("detect_sign", True)
 
         elif self.current_mode == 1:    # if mode == Traffic Light
             rospy.loginfo("New trigger for traffic_light")
-            msg_pub_traffic_light_order = UInt8()
+            rospy.loginfo("Current step : searching_traffic_light")
+            rospy.loginfo("Go to next step : in_traffic_light")
 
-            if self.current_step_traffic_light == self.StepOfTrafficLight.searching_traffic_light.value:
-                rospy.loginfo("Current step : searching_traffic_light")
-                rospy.loginfo("Go to next step : in_traffic_light")
+            
+            self.fnLaunch("detect_lane", True)
+            self.fnLaunch("detect_traffic_light", True)
+            self.fnLaunch("driving_lane", True)
 
-                msg_pub_traffic_light_order.data = self.StepOfTrafficLight.in_traffic_light.value
-                self.fnLaunch("camera_ex_calib", True)
-                self.fnLaunch("detect_lane", True)
-                self.fnLaunch("detect_traffic_light", True)
-                self.fnLaunch("driving_lane", True)
-
-            elif self.current_step_traffic_light == self.StepOfTrafficLight.in_traffic_light.value:
-                rospy.loginfo("Current step : in_traffic_light")
-                rospy.loginfo("Go to next step : pass_traffic_light")
-
-                self.fnLaunch("detect_traffic_light", False)
-
-            rospy.sleep(2)
-
-            self.pub_traffic_light_order.publish(msg_pub_traffic_light_order)
+        rospy.sleep(2)
 
    
     def fnLaunch(self, launch_str, is_start):
@@ -174,10 +166,6 @@ class CoreNodeController():
                     self.launch_driving_lane = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_driving/launch/turtlebot3_autorace_control_lane.launch"])
                     self.launch_driving_lane_launched = True
                     self.launch_driving_lane.start()
-                    
-                    returned = UInt8()
-                    returned.data = 1
-                    self.pub_exit.publish()
                 else:
                     pass
             else:
@@ -185,7 +173,51 @@ class CoreNodeController():
                     self.launch_driving_lane_launched = False
                     self.launch_driving_lane.shutdown()
                 else:
-                    pass                  
+                    pass   
+        elif launch_str == "detect_sign":
+            if is_start == True:
+                if self.launch_detect_sign_launched == False:
+                    self.launch_detect_sign = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch"])
+                    self.launch_detect_sign_launched = True
+                    self.launch_detect_sign.start()
+                else:
+                    pass
+            else:
+                if self.launch_detect_sign_launched == True:
+                    self.launch_detect_sign_launched = False
+                    self.launch_detect_sign.shutdown()
+                else:
+                    pass 
+        elif launch_str =="detect_intersection":
+            if is_start == True:
+                if self.launch_detect_intersection_launched == False:
+                    self.launch_detect_intersection = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_detect_intersection = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_intersection.launch"])
+                    self.launch_detect_intersection_launched = True
+                    self.launch_detect_intersection.start()
+                else:
+                    pass
+            else:
+                if self.launch_detect_intersection_launched == True:
+                    self.launch_detect_intersection_launched = False
+                    self.launch_detect_intersection.shutdown()
+                pass    
+        elif launch_str == "control_moving":
+            if is_start == True:
+                if self.launch_control_moving_launched == False:
+                    self.launch_control_moving = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_control_moving = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_driving/launch/turtlebot3_autorace_control_moving.launch"])
+                    self.launch_control_moving_launched = True
+                    self.launch_control_moving.start()
+                else:
+                    pass
+            else:
+                if self.launch_control_moving_launched == True:
+                    self.launch_control_moving_launched = False
+                    self.launch_control_moving.shutdown()
+                pass
+                
   
     def main(self):
         rospy.spin()

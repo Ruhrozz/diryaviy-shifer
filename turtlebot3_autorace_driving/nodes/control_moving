@@ -176,7 +176,7 @@ class ControlMoving():
 
 
     def go_forward(self, msg):
-        rospy.loginfo("go_forawrd function is called")
+        rospy.loginfo("go_forward function is called")
         if self.is_step_start == False:
             self.lastErorr = 0.0
             self.start_pos_x = self.current_pos_x
