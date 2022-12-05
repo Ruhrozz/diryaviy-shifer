@@ -33,10 +33,10 @@ class DetectTrafficLight():
     def __init__(self):
         self.hue_red_l = rospy.get_param("~detect/lane/red/hue_l", 0)
         self.hue_red_h = rospy.get_param("~detect/lane/red/hue_h", 26)
-        self.saturation_red_l = rospy.get_param("~detect/lane/red/saturation_l", 239)
+        self.saturation_red_l = rospy.get_param("~detect/lane/red/saturation_l", 215)
         self.saturation_red_h = rospy.get_param("~detect/lane/red/saturation_h", 255)
         self.lightness_red_l = rospy.get_param("~detect/lane/red/lightness_l", 123)
-        self.lightness_red_h = rospy.get_param("~detect/lane/red/lightness_h", 250)
+        self.lightness_red_h = rospy.get_param("~detect/lane/red/lightness_h", 255)
 
         self.hue_yellow_l = rospy.get_param("~detect/lane/yellow/hue_l", 19)
         self.hue_yellow_h = rospy.get_param("~detect/lane/yellow/hue_h", 33)
@@ -47,17 +47,17 @@ class DetectTrafficLight():
 
         self.hue_green_l = rospy.get_param("~detect/lane/green/hue_l", 40)
         self.hue_green_h = rospy.get_param("~detect/lane/green/hue_h", 113)
-        self.saturation_green_l = rospy.get_param("~detect/lane/green/saturation_l", 210)
+        self.saturation_green_l = rospy.get_param("~detect/lane/green/saturation_l", 250) # 255
         self.saturation_green_h = rospy.get_param("~detect/lane/green/saturation_h", 255)
-        self.lightness_green_l = rospy.get_param("~detect/lane/green/lightness_l", 131)
-        self.lightness_green_h = rospy.get_param("~detect/lane/green/lightness_h", 255)
+        self.lightness_green_l = rospy.get_param("~detect/lane/green/lightness_l", 200) # 131
+        self.lightness_green_h = rospy.get_param("~detect/lane/green/lightness_h", 250) # 255
 
         self.is_calibration_mode = rospy.get_param("~is_detection_calibration_mode", False)
-        if self.is_calibration_mode == True:
-            srv_detect_lane = Server(DetectTrafficLightParamsConfig, self.cbGetDetectTrafficLightParam)
+        # if self.is_calibration_mode == True:
+        #     srv_detect_lane = Server(DetectTrafficLightParamsConfig, self.cbGetDetectTrafficLightParam)
 
-        self.sub_image_type = "compressed"          # "compressed" / "raw"
-        self.pub_image_type = "compressed"          # "compressed" / "raw"
+        self.sub_image_type = "raw"          # "compressed" / "raw"
+        self.pub_image_type = "raw"          # "compressed" / "raw"
 
         self.counter = 1
         
@@ -109,7 +109,7 @@ class DetectTrafficLight():
         self.off_traffic = False
         rospy.sleep(1)
 
-        loop_rate = rospy.Rate(10)
+        loop_rate = rospy.Rate(100)
         while not rospy.is_shutdown():
             if self.is_image_available == True:
                 if self.is_traffic_light_finished == False:
@@ -165,13 +165,6 @@ class DetectTrafficLight():
 
 
     def cbGetImage(self, image_msg):
-        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
-        if self.counter % 3 != 0:
-            self.counter += 1
-            return
-        else:
-            self.counter = 1
-
         if self.sub_image_type == "compressed":
             np_arr = np.frombuffer(image_msg.data, np.uint8)
             self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -181,6 +174,7 @@ class DetectTrafficLight():
         self.is_image_available = True
 
     def fnFindTrafficLight(self):
+
         cv_image_mask = self.fnMaskGreenTrafficLight()
         cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
 
@@ -218,7 +212,7 @@ class DetectTrafficLight():
 
         if self.green_count >= 3:
             rospy.loginfo("GREEN")
-            cv2.putText(self.cv_image,"GREEN", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (80, 255, 0))
+            cv2.putText(self.cv_image,"GREEN", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (40, 200, 0))
             msg_sign = UInt8()
             msg_sign.data = self.CurrentMode.lane_following.value
 

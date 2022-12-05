@@ -40,23 +40,25 @@ class CoreNodeController():
         self.pub_exit = rospy.Publisher("/core/exit_mode", UInt8, queue_size=1)
         self.pub_timer_start = rospy.Publisher('/detect/timer/start', Float64, queue_size= 1)
 
-        self.CurrentMode = Enum('CurrentMode', 'idle lane_following traffic_light')
-        self.current_mode = self.CurrentMode.idle.value
+        self.current_mode = 0
 
         self.StepOfTrafficLight = Enum('StepOfTrafficLight', 'searching_traffic_light in_traffic_light')    
         self.current_step_traffic_light = self.StepOfTrafficLight.searching_traffic_light.value
     
         self.Launcher = Enum('Launcher', 'launch_camera_ex_calib launch_detect_lane launch_detect_traffic_light launch_driving_lane')
         self.uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-        
-        self.launch_camera_launched = False
+
+        self.launch_camera_in_launched = False
+        self.launch_camera_ex_launched = False
         self.launch_detect_lane_launched = False    
         self.launch_detect_traffic_light_launched = False
         self.launch_driving_lane_launched = False
 
+        self.fnLaunch("camera_in_calib", True)
+
         self.is_triggered = False
 
-        loop_rate = rospy.Rate(10) # 10hz
+        loop_rate = rospy.Rate(2)
         while not rospy.is_shutdown():
             if self.is_triggered == True:
                 self.fnControlNode()
@@ -72,18 +74,11 @@ class CoreNodeController():
   
     def fnControlNode(self): 
         # lane_following
-        if self.current_mode == self.CurrentMode.lane_following.value:
+        if self.current_mode == 2:      # if mode == Lane Following
             rospy.loginfo("New trigger for lane_following")
+            self.fnLaunch("detect_traffic_light", False)
 
-            self.fnLaunch(self.Launcher.launch_camera_ex_calib.value, True)
-
-            self.fnLaunch(self.Launcher.launch_detect_lane.value, True)
-            self.fnLaunch(self.Launcher.launch_detect_traffic_light.value, False)
-
-            self.fnLaunch(self.Launcher.launch_driving_lane.value, True)
-
-        # traffic_light
-        elif self.current_mode == self.CurrentMode.traffic_light.value:
+        elif self.current_mode == 1:    # if mode == Traffic Light
             rospy.loginfo("New trigger for traffic_light")
             msg_pub_traffic_light_order = UInt8()
 
@@ -92,44 +87,55 @@ class CoreNodeController():
                 rospy.loginfo("Go to next step : in_traffic_light")
 
                 msg_pub_traffic_light_order.data = self.StepOfTrafficLight.in_traffic_light.value
-                
-                self.fnLaunch(self.Launcher.launch_detect_lane.value, True)
-                self.fnLaunch(self.Launcher.launch_detect_traffic_light.value, True)
-                
-                self.fnLaunch(self.Launcher.launch_driving_lane.value, False)
+                self.fnLaunch("camera_ex_calib", True)
+                self.fnLaunch("detect_lane", True)
+                self.fnLaunch("detect_traffic_light", True)
+                self.fnLaunch("driving_lane", True)
 
             elif self.current_step_traffic_light == self.StepOfTrafficLight.in_traffic_light.value:
                 rospy.loginfo("Current step : in_traffic_light")
                 rospy.loginfo("Go to next step : pass_traffic_light")
 
-                self.fnLaunch(self.Launcher.launch_detect_lane.value, True)
-                self.fnLaunch(self.Launcher.launch_detect_traffic_light.value, False)
-
-                self.fnLaunch(self.Launcher.launch_driving_lane.value, True)
+                self.fnLaunch("detect_traffic_light", False)
 
             rospy.sleep(2)
 
             self.pub_traffic_light_order.publish(msg_pub_traffic_light_order)
 
    
-    def fnLaunch(self, launch_num, is_start):
-        if launch_num == self.Launcher.launch_camera_ex_calib.value:
+    def fnLaunch(self, launch_str, is_start):
+        if launch_str == "camera_in_calib":
             if is_start == True:
-                if self.launch_camera_launched == False:
-                    self.launch_camera = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_camera = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_camera/launch/extrinsic_camera_calibration.launch"])
-                    self.launch_camera_launched = True
-                    self.launch_camera.start()
+                if self.launch_camera_in_launched == False:
+                    self.launch_camera_in = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_camera_in = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_camera/launch/intrinsic_camera_calibration.launch"])
+                    self.launch_camera_in_launched = True
+                    self.launch_camera_in.start()
                 else:
                     pass
             else:
-                if self.launch_camera_launched == True:
-                    self.launch_camera_launched = False
-                    self.launch_camera.shutdown()
+                if self.launch_camera_in_launched == True:
+                    self.launch_camera_in_launched = False
+                    self.launch_camera_in.shutdown()
+                else:
+                    pass   
+        elif launch_str == "camera_ex_calib":
+            if is_start == True:
+                if self.launch_camera_ex_launched == False:
+                    self.launch_camera_ex = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_camera_ex = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_camera/launch/extrinsic_camera_calibration.launch"])
+                    self.launch_camera_ex_launched = True
+                    self.launch_camera_ex.start()
+                else:
+                    pass
+            else:
+                if self.launch_camera_ex_launched == True:
+                    self.launch_camera_ex_launched = False
+                    self.launch_camera_ex.shutdown()
                 else:
                     pass   
                            
-        elif launch_num == self.Launcher.launch_detect_lane.value:
+        elif launch_str == "detect_lane":
             if is_start == True:
                 if self.launch_detect_lane_launched == False:
                     self.launch_detect_lane = roslaunch.scriptapi.ROSLaunch()
@@ -145,7 +151,7 @@ class CoreNodeController():
                 else:
                     pass  
 
-        elif launch_num == self.Launcher.launch_detect_traffic_light.value:
+        elif launch_str == "detect_traffic_light":
             if is_start == True:
                 if self.launch_detect_traffic_light_launched == False:
                     self.launch_detect_traffic_light = roslaunch.scriptapi.ROSLaunch()
@@ -161,7 +167,7 @@ class CoreNodeController():
                 else:
                     pass    
                     
-        elif launch_num == self.Launcher.launch_driving_lane.value:
+        elif launch_str == "driving_lane":
             if is_start == True:
                 if self.launch_driving_lane_launched == False:
                     self.launch_driving_lane = roslaunch.scriptapi.ROSLaunch()
