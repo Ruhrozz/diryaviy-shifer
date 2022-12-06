@@ -49,7 +49,7 @@ class DetectLane():
             srv_detect_lane = Server(DetectLaneParamsConfig, self.cbGetDetectLaneParam)
 
         self.sub_image_type = "raw"         # you can choose image type "compressed", "raw"
-        self.pub_image_type = "compressed"  # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw"  # you can choose image type "compressed", "raw"
 
         if self.sub_image_type == "compressed":
             # subscribes compressed image
@@ -92,6 +92,21 @@ class DetectLane():
 
         self.reliability_white_line = 100
         self.reliability_yellow_line = 100
+
+        self.must_left = False
+        self.must_right = False
+        self.sub_turning = rospy.Subscriber('/robot/must_turn', UInt8, self.cbMustTurn, queue_size=1)
+
+    def cbMustTurn(self, msg):
+        if msg.data == 1:
+            self.must_left = True
+            self.must_right = False
+        elif msg.data == 2:
+            self.must_left = False
+            self.must_right = True
+        elif msg.data == 3:
+            self.must_right = False
+            self.must_left = False
 
     def cbGetDetectLaneParam(self, config, level):
         rospy.loginfo("[Detect Lane] Detect Lane Calibration Parameter reconfigured to")
@@ -421,7 +436,20 @@ class DetectLane():
         
         self.is_center_x_exist = True
 
-        if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
+
+        if self.must_left or self.must_right:
+            if self.must_left:
+                centerx = np.add(self.left_fitx, 280)
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+            else:
+                centerx = np.subtract(self.right_fitx, 280)
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        elif self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
             if white_fraction > 3000 and yellow_fraction > 3000:
                 centerx = np.mean([self.left_fitx, self.right_fitx], axis=0)
                 pts = np.hstack((pts_left, pts_right))

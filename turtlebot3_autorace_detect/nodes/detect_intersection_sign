@@ -33,7 +33,7 @@ class DetectSign():
         self.fnPreproc()
         
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
-        self.pub_image_type = "compressed" # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw" # you can choose image type "compressed", "raw"
 
         #subscribes
         if self.sub_image_type == "compressed":
@@ -87,13 +87,6 @@ class DetectSign():
             return err
 
     def cbFindTrafficSign(self, image_msg):
-        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
-        if self.counter % 3 != 0:
-            self.counter += 1
-            return
-        else:
-            self.counter = 1
-
         if self.sub_image_type == "compressed":
             #converting compressed image to opencv image
             np_arr = np.frombuffer(image_msg.data, np.uint8)
@@ -101,7 +94,7 @@ class DetectSign():
         elif self.sub_image_type == "raw":
             cv_image_input = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
-        MIN_MATCH_COUNT = 9 #9
+        MIN_MATCH_COUNT = 10 #9
         MIN_MSE_DECISION = 50000
 
         # find the keypoints and descriptors with SIFT
@@ -146,6 +139,7 @@ class DetectSign():
 
             mse = self.fnCalcMSE(src_pts, dst_pts)
             if mse < MIN_MSE_DECISION:
+                print(mse)
                 msg_sign = UInt8()
                 msg_sign.data = self.TrafficSign.left.value
 
@@ -170,6 +164,7 @@ class DetectSign():
 
             mse = self.fnCalcMSE(src_pts, dst_pts)
             if mse < MIN_MSE_DECISION:
+                print(mse)
                 msg_sign = UInt8()
                 msg_sign.data = self.TrafficSign.right.value
 

@@ -34,9 +34,12 @@ class CoreModeDecider():
         # publishes
         self.pub_decided_mode = rospy.Publisher('/robot/mode', UInt8, queue_size=1)
         self.pub_moving = rospy.Publisher('/robot/allow_moving', UInt8, queue_size=1)
+        self.pub_turning = rospy.Publisher('/robot/must_turn', UInt8, queue_size=1)
         self.pub_intersection_order = rospy.Publisher('/detect/intersection_order', UInt8, queue_size=1)
 
-        self.left_right_detected = False
+        self.traffic_detected = False
+        self.left_count = 0
+        self.right_count = 0
 
     def cbInvokedByTrafficLight(self, traffic_light_type_msg):
         rospy.loginfo("------------------invoke green light------------------")
@@ -54,29 +57,28 @@ class CoreModeDecider():
 
     def cbInvokedByTrafficSign(self, traffic_sign_type_msg):       
         # 1 - Traffic, 2 - Left, 3 - Right
-        if traffic_sign_type_msg.data == 1:
+        if traffic_sign_type_msg.data == 1 and not self.traffic_detected:
             rospy.loginfo("------------------traffic detected------------------")
-
             self.traffic_detected = True
 
-            msg_pub_intersection_order = UInt8()
-            msg_pub_intersection_order.data = 2
-            self.pub_intersection_order.publish(msg_pub_intersection_order)
+            # go to intersection mission
+            decided_mode = UInt8()
+            decided_mode.data = 3
+            self.pub_decided_mode.publish(decided_mode)
 
-        if traffic_sign_type_msg.data == 2 or traffic_sign_type_msg.data == 3:
-            if not self.left_right_detected:
-                rospy.loginfo("------------------invoke intersection------------------")
+        elif traffic_sign_type_msg.data == 2:
+            self.left_count += 1
 
-                self.left_right_detected = True
+        elif traffic_sign_type_msg.data == 3:
+            self.right_count += 1
 
-                msg_pub_intersection_order = UInt8()
-                msg_pub_intersection_order.data = 1
-                self.pub_intersection_order.publish(msg_pub_intersection_order)
+        elif self.left_count == self.right_count == 0:
+            return
+            
+        msg_pub_intersection_order = UInt8()
+        msg_pub_intersection_order.data = 1 if self.left_count > self.right_count else 2
+        self.pub_turning.publish(msg_pub_intersection_order)
 
-        # go to intersection mission
-        decided_mode = UInt8()
-        decided_mode.data = 3
-        self.pub_decided_mode.publish(decided_mode)
 
     def main(self):
         rospy.spin()

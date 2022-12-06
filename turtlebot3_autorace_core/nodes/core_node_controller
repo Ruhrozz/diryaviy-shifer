@@ -71,10 +71,8 @@ class CoreNodeController():
 
   
     def fnControlNode(self): 
-        if self.current_mode == 3:        # if mode == Find Intersection Sign
-            rospy.loginfo("New trigger for intersection")
-            self.fnLaunch("control_moving", True)
-            self.fnLaunch("detect_intersection", True)
+        if self.current_mode == 3:        # if mode == Find Construction Sign
+            rospy.loginfo("New trigger for construction")
 
         elif self.current_mode == 2:      # if mode == Find Traffic Sign
             rospy.loginfo("New trigger for lane_following")
