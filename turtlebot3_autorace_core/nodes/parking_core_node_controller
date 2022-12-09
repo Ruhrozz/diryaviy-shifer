@@ -155,7 +155,10 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_sign_launched == False:
                     self.launch_detect_sign = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch"])
+                    cli_args = [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch",'mission:=parking']
+                    roslaunch_args = cli_args[1:]
+                    roslaunch_file = [(roslaunch.rlutil.resolve_launch_arguments(cli_args)[0], roslaunch_args)]
+                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, roslaunch_file)
                     self.launch_detect_sign_launched = True
                     self.launch_detect_sign.start()
                 else:

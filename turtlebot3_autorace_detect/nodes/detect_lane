@@ -49,7 +49,7 @@ class DetectLane():
             srv_detect_lane = Server(DetectLaneParamsConfig, self.cbGetDetectLaneParam)
 
         self.sub_image_type = "raw"         # you can choose image type "compressed", "raw"
-        self.pub_image_type = "raw"  # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw"         # you can choose image type "compressed", "raw"
 
         if self.sub_image_type == "compressed":
             # subscribes compressed image

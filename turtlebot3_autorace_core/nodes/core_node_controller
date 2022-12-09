@@ -47,9 +47,10 @@ class CoreNodeController():
         self.launch_detect_lane_launched = False    
         self.launch_detect_traffic_light_launched = False
         self.launch_driving_lane_launched = False
-        self.launch_detect_sign_launched = False
-        self.launch_detect_intersection_launched = False
+        self.launch_detect_intersection_sign_launched = False
         self.launch_control_moving_launched = False
+        self.launch_detect_construction_sign_launched = False
+        self.launch_detect_construction_launched = False
 
         self.fnLaunch("camera_in_calib", True)
         self.fnLaunch("camera_ex_calib", True)
@@ -71,24 +72,38 @@ class CoreNodeController():
 
   
     def fnControlNode(self): 
-        if self.current_mode == 3:        # if mode == Find Construction Sign
+        if self.current_mode == 5:
+            rospy.loginfo("New trigger for parking")
+
+            self.fnLaunch("detect_construction_sign", False)
+            self.fnLaunch("detect_construction", False)
+            self.fnLaunch("control_moving", False) 
+
+        elif self.current_mode == 4:        # if mode == Find Obstacle
+            rospy.loginfo("New trigger for obstacle")
+
+            self.fnLaunch("detect_intersection_sign", False)
+            self.fnLaunch("detect_construction_sign", False)
+            self.fnLaunch("control_moving", True) 
+
+        elif self.current_mode == 3:        # if mode == Find Construction Sign
             rospy.loginfo("New trigger for construction")
+
+            self.fnLaunch("detect_construction_sign", True)
+            self.fnLaunch("detect_construction", True)
 
         elif self.current_mode == 2:      # if mode == Find Traffic Sign
             rospy.loginfo("New trigger for lane_following")
 
             self.fnLaunch("detect_traffic_light", False)
-            self.fnLaunch("detect_sign", True)
+            self.fnLaunch("detect_intersection_sign", True)
 
         elif self.current_mode == 1:    # if mode == Traffic Light
             rospy.loginfo("New trigger for traffic_light")
-            rospy.loginfo("Current step : searching_traffic_light")
-            rospy.loginfo("Go to next step : in_traffic_light")
 
-            
             self.fnLaunch("detect_lane", True)
             self.fnLaunch("detect_traffic_light", True)
-            self.fnLaunch("driving_lane", True)
+            self.fnLaunch("control_lane", True)
 
         rospy.sleep(2)
 
@@ -157,7 +172,7 @@ class CoreNodeController():
                 else:
                     pass    
                     
-        elif launch_str == "driving_lane":
+        elif launch_str == "control_lane":
             if is_start == True:
                 if self.launch_driving_lane_launched == False:
                     self.launch_driving_lane = roslaunch.scriptapi.ROSLaunch()
@@ -172,35 +187,21 @@ class CoreNodeController():
                     self.launch_driving_lane.shutdown()
                 else:
                     pass   
-        elif launch_str == "detect_sign":
+        elif launch_str == "detect_intersection_sign":
             if is_start == True:
-                if self.launch_detect_sign_launched == False:
-                    self.launch_detect_sign = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch"])
-                    self.launch_detect_sign_launched = True
-                    self.launch_detect_sign.start()
+                if self.launch_detect_intersection_sign_launched == False:
+                    self.launch_detect_intersection_sign = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_detect_intersection_sign = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch"])
+                    self.launch_detect_intersection_sign_launched = True
+                    self.launch_detect_intersection_sign.start()
                 else:
                     pass
             else:
-                if self.launch_detect_sign_launched == True:
-                    self.launch_detect_sign_launched = False
-                    self.launch_detect_sign.shutdown()
+                if self.launch_detect_intersection_sign_launched == True:
+                    self.launch_detect_intersection_sign_launched = False
+                    self.launch_detect_intersection_sign.shutdown()
                 else:
-                    pass 
-        elif launch_str =="detect_intersection":
-            if is_start == True:
-                if self.launch_detect_intersection_launched == False:
-                    self.launch_detect_intersection = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_intersection = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_intersection.launch"])
-                    self.launch_detect_intersection_launched = True
-                    self.launch_detect_intersection.start()
-                else:
-                    pass
-            else:
-                if self.launch_detect_intersection_launched == True:
-                    self.launch_detect_intersection_launched = False
-                    self.launch_detect_intersection.shutdown()
-                pass    
+                    pass    
         elif launch_str == "control_moving":
             if is_start == True:
                 if self.launch_control_moving_launched == False:
@@ -214,6 +215,37 @@ class CoreNodeController():
                 if self.launch_control_moving_launched == True:
                     self.launch_control_moving_launched = False
                     self.launch_control_moving.shutdown()
+                pass
+        elif launch_str == "detect_construction_sign":
+            if is_start == True:
+                if self.launch_detect_construction_sign_launched == False:
+                    self.launch_detect_construction_sign = roslaunch.scriptapi.ROSLaunch()
+                    cli_args = [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_sign.launch",'mission:=construction']
+                    roslaunch_args = cli_args[1:]
+                    roslaunch_file = [(roslaunch.rlutil.resolve_launch_arguments(cli_args)[0], roslaunch_args)]
+                    self.launch_detect_construction_sign = roslaunch.parent.ROSLaunchParent(self.uuid, roslaunch_file)
+                    self.launch_detect_construction_sign_launched = True
+                    self.launch_detect_construction_sign.start()
+                else:
+                    pass
+            else:
+                if self.launch_detect_construction_sign_launched == True:
+                    self.launch_detect_construction_sign_launched = False
+                    self.launch_detect_construction_sign.shutdown()
+                pass
+        elif launch_str == "detect_construction":
+            if is_start == True:
+                if self.launch_detect_construction_launched == False:
+                    self.launch_detect_construction = roslaunch.scriptapi.ROSLaunch()
+                    self.launch_detect_construction = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_detect/launch/detect_construction.launch"])
+                    self.launch_detect_construction_launched = True
+                    self.launch_detect_construction.start()
+                else:
+                    pass
+            else:
+                if self.launch_detect_construction_launched == True:
+                    self.launch_detect_construction_launched = False
+                    self.launch_detect_construction.shutdown()
                 pass
                 
   

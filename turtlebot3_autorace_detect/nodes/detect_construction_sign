@@ -33,7 +33,7 @@ class DetectSign():
         self.fnPreproc()
         
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
-        self.pub_image_type = "compressed" # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw" # you can choose image type "compressed", "raw"
 
         #subscribes
         if self.sub_image_type == "compressed":
@@ -120,7 +120,7 @@ class DetectSign():
             mse = self.fnCalcMSE(src_pts, dst_pts)
             if mse < MIN_MSE_DECISION:
                 msg_sign = UInt8()
-                msg_sign.data = self.TrafficSign.construction.value
+                msg_sign.data = 4
 
                 self.pub_traffic_sign.publish(msg_sign)
 
@@ -128,7 +128,6 @@ class DetectSign():
                 image_out_num = 2
         else:
             matches_construction = None
-            rospy.loginfo("not found")
       
         if image_out_num == 1:
             if self.pub_image_type == "compressed":

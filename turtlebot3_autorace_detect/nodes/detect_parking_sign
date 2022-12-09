@@ -33,7 +33,7 @@ class DetectSign():
         self.fnPreproc()
 
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
-        self.pub_image_type = "compressed" # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw" # you can choose image type "compressed", "raw"
 
         #subscribes
         if self.sub_image_type == "compressed":

@@ -14,19 +14,44 @@ from geometry_msgs.msg import Twist
 class ControlLane():
     def __init__(self):
         self.sub_green_light = rospy.Subscriber('/robot/allow_moving', UInt8, self.cbGetLight, queue_size=1)
-        self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.cbFollowLane, queue_size = 1)
+        self.sub_robot_mode = rospy.Subscriber('/robot/mode', UInt8, self.cbGetMode, queue_size=1)
+        self.sub_lane = rospy.Subscriber('/detect/lane', Float64, self.cbFollowLane, queue_size = 1)
         self.sub_max_vel = rospy.Subscriber('/control/max_vel', Float64, self.cbGetMaxVel, queue_size = 1)
-        self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
+        
+        self.pub_cmd_vel = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+        self.pub_must_slow = rospy.Subscriber('/robot/must_slow', UInt8, self.cbMustSlow, queue_size = 1)
 
         self.lastError = 0
         self.MAX_VEL = 0.2
         self.allow_moving = False
+        self.must_slow = False
+        self.mode = 0
 
         rospy.on_shutdown(self.fnShutDown)
+
+    def cbGetMode(self, mode):
+        self.mode = mode.data
+
+    def cbMustSlow(self, slow):
+        if slow.data == 1 and self.mode == 4:
+            rospy.loginfo("-------------------------slow!!!--------------------------")
+            self.must_slow = True
+        else:
+            self.must_slow = False
 
     def cbGetLight(self, light):
         if light.data == 1:
             self.allow_moving = True
+        if light.data == 0:
+            self.allow_moving = False
+            twist = Twist()      
+            twist.linear.x = 0
+            twist.linear.y = 0
+            twist.linear.z = 0
+            twist.angular.x = 0
+            twist.angular.y = 0
+            twist.angular.z = 0
+            self.pub_cmd_vel.publish(twist)
 
     def cbGetMaxVel(self, max_vel_msg):
         self.MAX_VEL = max_vel_msg.data
@@ -45,7 +70,7 @@ class ControlLane():
             
             twist = Twist()
             # twist.linear.x = 0.05        
-            twist.linear.x = min(self.MAX_VEL * ((1 - abs(error) / 500) ** 2.2), 0.1)
+            twist.linear.x = min(self.MAX_VEL * ((1 - abs(error) / 500) ** 2.2), 0.01 if self.must_slow else 0.2 )
             twist.linear.y = 0
             twist.linear.z = 0
             twist.angular.x = 0
