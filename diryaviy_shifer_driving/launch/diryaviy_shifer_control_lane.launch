@@ -1,0 +1,5 @@
+<launch>
+  <!-- launch diryaviy_shifer_detect_lane.launch before launch this file -->
+  <node pkg="diryaviy_shifer_driving" type="control_lane" name="control_lane" output="screen">
+  </node>
+</launch>

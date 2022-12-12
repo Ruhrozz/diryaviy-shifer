@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>diryaviy_shifer_2020</name>
+  <version>1.1.0</version>
+  <description>
+    TurtleBot3 AutoRace 2020 ROS 1 packages (meta package)
+  </description>
+  <license>Apache 2.0</license>
+  <author email="ashekim@robotis.com">Ashe Kim</author>
+  <author>Ashe Kim</author>
+  <maintainer email="ashekim@robotis.com">Ashe Kim</maintainer>
+  <maintainer email="willson@robotis.com">Will Son</maintainer>
+  <url type="website">http://wiki.ros.org/diryaviy_shifer</url>
+  <url type="emanual">http://turtlebot3.robotis.com</url>
+  <url type="repository">https://github.com/ROBOTIS-GIT/diryaviy_shifer_2020</url>
+  <url type="bugtracker">https://github.com/ROBOTIS-GIT/diryaviy_shifer_2020/issues</url>
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>diryaviy_shifer_camera</exec_depend>
+  <exec_depend>diryaviy_shifer_core</exec_depend>
+  <exec_depend>diryaviy_shifer_detect</exec_depend>
+  <exec_depend>diryaviy_shifer_driving</exec_depend>
+  <exec_depend>diryaviy_shifer_msgs</exec_depend>
+  <export><metapackage/></export>
+</package>
